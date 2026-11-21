@@ -22,6 +22,11 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 **Cause:** the design system and i18n were vendored whole from the full product.
 **Fix / status:** expected. Reuse them when building milestones instead of re-creating.
 
+### 2026-11-21 — failed runs report 0/0 tokens, not null
+**Symptom:** a failed or cancelled run's cost badge read "0 tok · —".
+**Cause:** `run-executor.ts` failure paths persist `tokensIn: 0, tokensOut: 0` with `costUsd: null`.
+**Do instead:** treat `!tokens_in && !tokens_out` as "no usage" (see `src/components/run-cost-badge/RunCostBadge.tsx`); only `cost_usd == null` means unknown cost, never render it as `$0.00`.
+
 ## Tool & Library Notes
 <!-- Dependency and tooling quirks: name the package and version. -->
 

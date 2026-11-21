@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, ne } from 'drizzle-orm';
 import type { PrMeta, PrDetail, GitHubClient, PrReviewComment } from '@devdigest/shared';
 import { PrCommentInput } from '@devdigest/shared';
 import * as t from '../../db/schema.js';
@@ -8,6 +8,7 @@ import { getContext } from '../_shared/context.js';
 import { IdParams } from '../_shared/schemas.js';
 import { AppError, NotFoundError } from '../../platform/errors.js';
 import { deriveReviewStatus } from './status.js';
+import { rollupRunCosts } from './cost.js';
 
 /**
  * F1 — pulls module. PR import via Octokit (list + per-PR detail).
@@ -129,6 +130,29 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
       }
     }
 
+    // M1 COST column: every finished (non-running) agent run per PR, newest
+    // first, summed in JS (same one-IN-query pattern as the score above).
+    const costByPr =
+      prIds.length > 0
+        ? rollupRunCosts(
+            await container.db
+              .select({
+                prId: t.agentRuns.prId,
+                runId: t.agentRuns.id,
+                agentName: t.agents.name,
+                model: t.agentRuns.model,
+                status: t.agentRuns.status,
+                ranAt: t.agentRuns.ranAt,
+                costUsd: t.agentRuns.costUsd,
+              })
+              .from(t.agentRuns)
+              .leftJoin(t.agents, eq(t.agents.id, t.agentRuns.agentId))
+              .where(and(inArray(t.agentRuns.prId, prIds), ne(t.agentRuns.status, 'running')))
+              .orderBy(desc(t.agentRuns.ranAt))
+              .then((rs) => rs.flatMap((x) => (x.prId ? [{ ...x, prId: x.prId }] : []))),
+          )
+        : new Map();
+
     const now = Date.now();
     return rows.map((r) => {
       const review = latestReviewByPr.get(r.id);
@@ -153,6 +177,7 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
         opened_at: r.openedAt?.toISOString() ?? null,
         updated_at: r.updatedAt?.toISOString() ?? null,
         score: review ? review.score : null,
+        cost: costByPr.get(r.id) ?? null,
       };
     });
   });

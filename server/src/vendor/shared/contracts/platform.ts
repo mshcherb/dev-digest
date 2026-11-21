@@ -156,6 +156,28 @@ export type Repo = z.infer<typeof Repo>;
 export const PrStatus = z.enum(['needs_review', 'reviewed', 'stale', 'open', 'closed', 'merged']);
 export type PrStatus = z.infer<typeof PrStatus>;
 
+/** One finished agent run of a PR, as listed in the PR-list cost tooltip. */
+export const PrRunCost = z.object({
+  run_id: z.string(),
+  agent_name: z.string().nullable(),
+  model: z.string().nullable(),
+  status: z.string().nullable(),
+  ran_at: z.string().nullable(),
+  /** null = unknown (failed run, unknown model price, or run made before M1). */
+  cost_usd: z.number().nullable(),
+});
+export type PrRunCost = z.infer<typeof PrRunCost>;
+
+/** Sum of every finished run's known cost for a PR. */
+export const PrCost = z.object({
+  /** null when no run has a known cost. */
+  total_usd: z.number().nullable(),
+  runs_count: z.number().int(),
+  /** Newest first. */
+  runs: z.array(PrRunCost),
+});
+export type PrCost = z.infer<typeof PrCost>;
+
 export const PrMeta = z.object({
   id: z.string().nullish(),
   number: z.number().int(),
@@ -172,8 +194,11 @@ export const PrMeta = z.object({
   updated_at: z.string().nullish(),
   // Latest-review score (list endpoint only; null/absent until reviewed).
   score: z.number().int().nullish(),
+  // M1 run cost rollup (list endpoint only; null/absent when the PR has no finished runs).
+  cost: PrCost.nullish(),
 });
 export type PrMeta = z.infer<typeof PrMeta>;
+
 
 export const PrFile = z.object({
   path: z.string(),
