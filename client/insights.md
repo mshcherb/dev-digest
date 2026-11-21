@@ -14,6 +14,11 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 ## What Doesn't Work
 <!-- Dead ends, rejected approaches, antipatterns: what was tried, why it failed, what to do instead. Most valuable section. -->
 
+### 2026-11-21 — mixing `border` shorthand with `borderColor` in inline styles
+**Symptom:** toggled button keeps a stale border; console warns "Removing borderColor … border … can lead to styling bugs". jsdom tests pass.
+**Cause:** React removes the longhand on re-render; the browser falls back to the shorthand's color (`currentColor`).
+**Do instead:** never mix `border`/`borderLeft*` shorthands with longhands in inline styles; use `borderWidth`/`borderStyle`/`borderColor` only. Verify toggled styles in a real browser. Known offender: `FindingCard/styles.ts`.
+
 ## Codebase Patterns
 <!-- Conventions and architecture decisions that are not obvious from the code. -->
 
@@ -27,11 +32,26 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 **Cause:** `run-executor.ts` failure paths persist `tokensIn: 0, tokensOut: 0` with `costUsd: null`.
 **Do instead:** treat `!tokens_in && !tokens_out` as "no usage" (see `src/components/run-cost-badge/RunCostBadge.tsx`); only `cost_usd == null` means unknown cost, never render it as `$0.00`.
 
+### 2026-11-21 — vendored `SeverityBadge` has hard-coded English labels
+**Symptom:** `SeverityBadge` renders `SEV.label` (English), which bypasses next-intl.
+**Cause:** vendored design system predates i18n here.
+**Do instead:** use `compact` (icon + count) and put the label from `messages/` next to it. Use the 3-value `Severity` from `@devdigest/shared`, not `@devdigest/ui`'s (has `INFO`).
+
+### 2026-11-21 — `FindingCard.defaultExpanded` is read only on mount
+**Symptom:** after filtering `FindingsPanel`, the first card of the new list stayed collapsed.
+**Cause:** `FindingCard` copies `defaultExpanded` into state once; filtered lists reuse already-mounted cards (`key={f.id}`).
+**Do instead:** key the list container by the filter state (`key={`${severity ?? "all"}:${hideLow}`}` in `FindingsPanel.tsx`) so cards remount and the first one opens.
+
 ## Tool & Library Notes
 <!-- Dependency and tooling quirks: name the package and version. -->
 
 ## Recurring Errors & Fixes
 <!-- Error message or symptom → cause → exact fix. -->
+
+### 2026-11-21 — `Module not found: Can't resolve './contracts/findings.js'` in Next dev
+**Symptom:** PR page shows a Build Error from `src/vendor/shared/index.ts`; `pnpm test` and `pnpm typecheck` are green.
+**Cause:** a **value** import from `@devdigest/shared` (here `Severity.options` in `FindingsPanel/helpers.ts`) bundles the vendored barrel, whose `./contracts/*.js` specifiers Next's webpack cannot map to `.ts`. Vitest and tsc resolve them, so only the browser breaks.
+**Do instead:** import `@devdigest/shared` with `import type` only; keep runtime lists as literals (`as const satisfies readonly Severity[]` + a type-level exhaustiveness check). Guarded by `src/lib/shared-imports.test.ts`.
 
 ## Session Notes
 <!-- Dated wrap-ups: what changed, what is left. 2–3 lines each. -->

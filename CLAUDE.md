@@ -28,6 +28,7 @@ Only Postgres runs in Docker; API and web run on the host.
 - `@devdigest/shared` (Zod contracts) exists as **two copies**: `server/src/vendor/shared` and
   `client/src/vendor/shared`. They have already drifted. Apply a contract change to both copies.
 - CI is path-filtered per package. A `reviewer-core` change also triggers `server-unit`.
+- Node/pnpm come from nvm; non-interactive shells need `export PATH=~/.nvm/versions/node/<ver>/bin:$PATH`.
 - Single-user mode with no login: the app needs `pnpm db:seed` (system user + default workspace).
 - DB schema already holds tables for every future milestone. Empty tables are expected, not dead code.
 
@@ -50,7 +51,7 @@ Only Postgres runs in Docker; API and web run on the host.
 - Extra `insights.md`: `server/src/modules/repo-intel/` (indexer) and the repo root (cross-package, scripts, CI).
 
 ## Keeping these files healthy
-- **Every task, via the `engineering-insights` skill:** at the start, once the request is clear, read the touched
-  module's `insights.md`; at the end, before the final answer, append only new and important lessons (no duplicates).
+- **Every task:** call the `engineering-insights` skill (Skill tool) at the start, once the request is clear, and again
+  at the end, before the final answer. Do not read or edit `insights.md` by hand instead: the skill holds the steps.
 - If a pitfall bites twice, compress it to one line under that package's **Gotchas**.
 - Keep every `CLAUDE.md` under 100 lines. Test for each line: "if I removed it, would Claude start making mistakes?"

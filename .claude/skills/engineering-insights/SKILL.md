@@ -1,6 +1,6 @@
 ---
 name: engineering-insights
-description: Reads and records engineering lessons in the insights.md of the module a task touches. Use at the START of every task in this repo — right after the request is clarified, before reading or changing code — to read that module's lessons; and at the END of every task, before the final answer, to record anything new and important learned (dead ends, fixes found after several attempts, library quirks, recurring errors, conventions, decisions). Also on /engineering-insights.
+description: Reads and records engineering lessons in the insights.md of the module a task touches. Use at the START of every task in this repo — right after the request is clarified, before reading or changing code — to read that module's lessons; and at the END of every task, before the final answer, to record anything new and important learned (dead ends, fixes found after several attempts, library quirks, recurring errors, conventions, decisions). Also on /engineering-insights. Invoke it even when reading insights.md by hand looks enough — only the skill has the duplicate check and the required `insights:` line of the final answer.
 ---
 
 1. Module → file: `server/src/modules/repo-intel/**` → its `insights.md`; `server/`, `client/`, `reviewer-core/`, `e2e/` → `<pkg>/insights.md`; root scripts/CI or a cross-package lesson → `./insights.md`. Several modules → each of their files.
