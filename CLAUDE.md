@@ -46,9 +46,11 @@ Only Postgres runs in Docker; API and web run on the host.
   - `README.md`: what the package is and how it is wired (diagrams live here)
   - `docs/`: deep dives on how things work today
   - `specs/<feature>.md`: what we are building. Check it before starting a feature.
-  - `insights.md`: log of pitfalls and decisions. Read it before debugging something odd.
+  - `insights.md`: lessons in 7 fixed sections. Read it before changing or debugging that package.
+- Extra `insights.md`: `server/src/modules/repo-intel/` (indexer) and the repo root (cross-package, scripts, CI).
 
 ## Keeping these files healthy
-- Learned something non-obvious? Append an entry to `<package>/insights.md` (date, symptom, cause, fix).
+- **Every task, via the `engineering-insights` skill:** at the start, once the request is clear, read the touched
+  module's `insights.md`; at the end, before the final answer, append only new and important lessons (no duplicates).
 - If a pitfall bites twice, compress it to one line under that package's **Gotchas**.
 - Keep every `CLAUDE.md` under 100 lines. Test for each line: "if I removed it, would Claude start making mistakes?"

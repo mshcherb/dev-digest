@@ -46,6 +46,6 @@ Fastify 5 · fastify-type-provider-zod 4 · Drizzle ORM 0.45 + postgres.js · p-
 
 ## Documentation (open when relevant)
 - API map, request/DI flow, env vars, review-context notes → `README.md`
-- Indexer pipeline and `repoIntel.*` facade → `src/modules/repo-intel/README.md`
+- Indexer pipeline and `repoIntel.*` facade → `src/modules/repo-intel/README.md` · its pitfalls → `src/modules/repo-intel/insights.md`
 - Test conventions → `../TESTING.md`
 - Deep dives → `docs/` · Feature specs → `specs/` · Known pitfalls → `insights.md`
