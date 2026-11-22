@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Provider } from './knowledge.js';
+import { Severity } from './findings.js';
 
 /**
  * Platform / scaffolding DTOs owned by F1:
@@ -178,6 +179,32 @@ export const PrCost = z.object({
 });
 export type PrCost = z.infer<typeof PrCost>;
 
+/** One finding in the PR-list FINDINGS popover preview. */
+export const PrFindingPreview = z.object({
+  id: z.string(),
+  severity: Severity,
+  title: z.string(),
+  file: z.string(),
+  start_line: z.number().int(),
+  confidence: z.number(),
+  /** Truncated server-side (≈160 chars). */
+  rationale: z.string(),
+});
+export type PrFindingPreview = z.infer<typeof PrFindingPreview>;
+
+/** Findings of the latest `done` run of each agent on a PR, summed. */
+export const PrFindings = z.object({
+  total: z.number().int(),
+  counts: z.object({
+    CRITICAL: z.number().int(),
+    WARNING: z.number().int(),
+    SUGGESTION: z.number().int(),
+  }),
+  /** CRITICAL first, then confidence desc; capped (total - preview.length = "+K more"). */
+  preview: z.array(PrFindingPreview),
+});
+export type PrFindings = z.infer<typeof PrFindings>;
+
 export const PrMeta = z.object({
   id: z.string().nullish(),
   number: z.number().int(),
@@ -196,6 +223,8 @@ export const PrMeta = z.object({
   score: z.number().int().nullish(),
   // M1 run cost rollup (list endpoint only; null/absent when the PR has no finished runs).
   cost: PrCost.nullish(),
+  // M1 FINDINGS column (list endpoint only; null/absent when the PR has no done run).
+  findings: PrFindings.nullish(),
 });
 export type PrMeta = z.infer<typeof PrMeta>;
 

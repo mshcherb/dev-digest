@@ -159,7 +159,7 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
 
   it('runs a review: map-reduce + grounding drops the hallucinated finding, keeps the valid one', async () => {
     const app = await appWith(REVIEW_FIXTURE);
-    const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+    const { repo, pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
 
     const agent = (
       await app.inject({
@@ -208,6 +208,15 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     expect(run!.status).toBe('done');
     expect(run!.findingsCount).toBe(1);
     expect(run!.grounding).toBe('1/2 passed');
+
+    // M1 FINDINGS column: the PR list rolls up the latest done run per agent
+    const list = (
+      await app.inject({ method: 'GET', url: `/repos/${repo.id}/pulls` })
+    ).json();
+    const row = list.find((p: { id: string }) => p.id === pr.id);
+    expect(row.findings.total).toBe(1);
+    expect(row.findings.counts).toEqual({ CRITICAL: 1, WARNING: 0, SUGGESTION: 0 });
+    expect(row.findings.preview[0]).toMatchObject({ file: 'src/config.ts', start_line: 11 });
 
     await app.close();
   });

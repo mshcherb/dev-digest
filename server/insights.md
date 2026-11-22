@@ -45,6 +45,12 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 **Cause:** the CI runner package returns in milestone M6 (Export to CI).
 **Fix / status:** expected.
 
+### 2026-11-22 — PR-list SCORE and FINDINGS use different bases
+**Where:** `server/src/modules/pulls/routes.ts:121` (`latestReviewByPr`), `server/src/modules/pulls/findings.ts:39` (`pickLatestRunPerAgent`)
+**Symptom:** with two agents, the list's SCORE ring reflects one agent while FINDINGS sums both.
+**Cause:** SCORE = the single newest `kind='review'` row for the PR; FINDINGS = the latest `status='done'` run of each agent, summed (product decision, `server/specs/m1-findings-column.md`). Runs link to findings only via `reviews.run_id` (no FK).
+**Do instead:** do not "unify" one into the other without a spec change; to join run → findings use `reviews.run_id`, never `reviews.agent_id`/`created_at`.
+
 ## Tool & Library Notes
 <!-- Dependency and tooling quirks: name the package and version. -->
 
