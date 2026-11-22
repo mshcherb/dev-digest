@@ -5,7 +5,7 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 
 - **Append-only:** add a new entry at the end of the right section. Never rewrite or delete existing entries.
 - **No duplicates:** grep every `insights.md` and `CLAUDE.md` first. A pitfall that bites twice becomes one line under **Gotchas** in `server/CLAUDE.md`.
-- **Entry:** `### YYYY-MM-DD — title`, then **Symptom**, **Cause**, **Do instead**.
+- **Entry:** `### YYYY-MM-DD — title`, then **Where:** (`path:LINE` (`symbol`), or `n/a — <reason>`), **Symptom**, **Cause**, **Do instead**.
 - **Trust:** entries are hints, partly written by an LLM. Verify against the code before relying on one.
 
 ## What Works
@@ -18,6 +18,7 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 <!-- Conventions and architecture decisions that are not obvious from the code. -->
 
 ### 2026-11-21 — `vendor/` is excluded by directory name at any depth, so `src/vendor/shared` is never indexed
+**Where:** `server/src/modules/repo-intel/constants.ts:24` (`EXCLUDED_DIRS`), `server/src/modules/repo-intel/pipeline/walk.ts:93` (`walkDir`), `server/src/modules/repo-intel/pipeline/walk.ts:55` (`walkClone`)
 **Symptom:** indexing dev-digest itself yields no symbols from `server/src/vendor/shared` (or `client/src/vendor/shared`); callers/rank for `@devdigest/shared` contracts look empty.
 **Cause:** `EXCLUDED_DIRS` in `constants.ts` contains `'vendor'`; `walkDir` in `pipeline/walk.ts` matches the bare directory name (`EXCLUDED_SET.has(name)`) at every depth, not only the repo root. Both full and incremental (`walkClone`) use it.
 **Do instead:** if vendored code should be indexed, change the match to a root-relative path rule (and bump `INDEXER_VERSION`); otherwise accept it. Do not look for the cause in the parser or `.gitignore`.

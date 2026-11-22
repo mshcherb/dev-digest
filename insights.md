@@ -6,7 +6,7 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 
 - **Append-only:** add a new entry at the end of the right section. Never rewrite or delete existing entries.
 - **No duplicates:** grep every `insights.md` and `CLAUDE.md` first. A pitfall that bites twice becomes one line in the root `CLAUDE.md` (**Cross-package gotchas**).
-- **Entry:** `### YYYY-MM-DD — title`, then **Symptom**, **Cause**, **Do instead**. Older entries use **Fix / status**.
+- **Entry:** `### YYYY-MM-DD — title`, then **Where:** (`path:LINE` (`symbol`), or `n/a — <reason>`), **Symptom**, **Cause**, **Do instead**. Older entries use **Fix / status**.
 - **Trust:** entries are hints, partly written by an LLM. Verify against the code before relying on one.
 
 ## What Works
@@ -22,11 +22,13 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 <!-- Dependency and tooling quirks: name the package and version. -->
 
 ### 2026-11-21 — `pnpm` / `node` missing in non-interactive shells
+**Where:** n/a — shell environment (nvm loads only in interactive shells), not repo code
 **Symptom:** `pnpm: command not found` when an agent runs `pnpm db:generate` / `pnpm test`.
 **Cause:** Node 22 comes from nvm, which only loads in interactive shells.
 **Do instead:** prefix commands with `export PATH=~/.nvm/versions/node/v22.23.5/bin:$PATH` (check `ls ~/.nvm/versions/node` for the current version).
 
 ### 2026-11-21 — Claude Code shell check blocks `cd`/`cat` into `[repoId]` route folders
+**Where:** n/a — Claude Code harness behavior; the affected paths are the `client/src/app/repos/[repoId]/` folders, no specific line
 **Symptom:** Bash calls touching `client/src/app/repos/[repoId]/...` are refused ("cd whose target cannot be resolved", or "could not be checked for dangerous rm") even with no `rm`.
 **Cause:** the bracketed Next.js dynamic-segment paths confuse the harness's command parser.
 **Do instead:** use Read/Edit/Write with absolute paths, or a script in the scratchpad that takes the client root as an argument.
@@ -39,8 +41,3 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 
 ## Open Questions
 <!-- Unresolved issues. When one is answered, add a new entry in the right section that cites this title. -->
-
-### 2026-11-21 — README advises `docker compose down -v`, e2e README forbids it
-**Symptom:** root README "Reset everything" suggests `down -v`; `e2e/README.md` warns it deletes every imported repo and review.
-**Cause:** docs written at different times.
-**Fix / status:** open. For a clean DB use `./scripts/e2e.sh`. The root README should be aligned.

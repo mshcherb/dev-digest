@@ -5,7 +5,7 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 
 - **Append-only:** add a new entry at the end of the right section. Never rewrite or delete existing entries.
 - **No duplicates:** grep every `insights.md` and `CLAUDE.md` first. A pitfall that bites twice becomes one line under **Gotchas** in `CLAUDE.md`.
-- **Entry:** `### YYYY-MM-DD — title`, then **Symptom**, **Cause**, **Do instead**. Older entries use **Fix / status**.
+- **Entry:** `### YYYY-MM-DD — title`, then **Where:** (`path:LINE` (`symbol`), or `n/a — <reason>`), **Symptom**, **Cause**, **Do instead**. Older entries use **Fix / status**.
 - **Trust:** entries are hints, partly written by an LLM. Verify against the code before relying on one.
 
 ## What Works
@@ -18,6 +18,7 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 <!-- Conventions and architecture decisions that are not obvious from the code. -->
 
 ### 2026-11-21 — `specs/` here means test flows, not feature specs
+**Where:** `e2e/run.ts:55` (`loadFlows`)
 **Symptom:** the repo-wide convention has `<package>/specs/` for feature specs, but `e2e/specs/` holds `*.flow.json` test flows read by `run.ts`.
 **Fix / status:** feature specs for e2e live in `docs/specs/`. `run.ts` only picks `*.flow.json`, so other files there would be ignored, but keep the folder flows-only.
 
@@ -28,6 +29,7 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 <!-- Error message or symptom → cause → exact fix. -->
 
 ### 2026-11-21 — flows 02/04/05 require the seeded demo repo to be the only repo
+**Where:** `e2e/specs/02-repo-pulls-detail.flow.json:6` (`wait --url /pulls`), `e2e/specs/04-pr-findings.flow.json:6` (`wait --url /pulls`), `e2e/specs/05-pr-diff.flow.json:6` (`wait --url /pulls`)
 **Symptom:** `npm test` against a dev DB with other imported repos fails on the home redirect.
 **Fix / status:** run `./scripts/e2e.sh` (isolated stack, alternate ports). Never "reset" with `docker compose down -v`.
 
