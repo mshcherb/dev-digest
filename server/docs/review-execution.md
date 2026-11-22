@@ -80,7 +80,9 @@ Inside `runOneAgent` (`server/src/modules/reviews/run-executor.ts:146`):
      `server/src/modules/reviews/run-executor.ts:375` (`buildRepoMapDigest`)
    - a one-line note when changed files are in the top 5% by rank, appended to the task line:
      `server/src/modules/reviews/run-executor.ts:395` (`buildRankNote`)
-   - every enrichment is best-effort: an error is a Live Log `info` line, never a failed run.
+   - every enrichment is best-effort: an error never fails the run. Most turn into a Live Log
+     `info` line; `buildRankNote` swallows its error silently (bare `catch { return ''; }`, no log
+     line): `server/src/modules/reviews/run-executor.ts:410` (`buildRankNote`).
 3. **Engine call.** `reviewPullRequest` gets the system prompt, model, diff, provider, strategy,
    the optional slots above (spread in only when present), `prDescription` from `pull.body`, the
    task line, a `sessionId` of `owner/name#number:agent`, an `onEvent` bridge and

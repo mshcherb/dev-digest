@@ -10,6 +10,7 @@ import React from "react";
 import { useTranslations } from "next-intl";
 import type { PrCost } from "@devdigest/shared";
 import { EMPTY, formatTokenFlow, formatTokensTotal, formatUsd } from "@/lib/format";
+import { AnchoredPopover } from "@/components/anchored-popover";
 import { s } from "./styles";
 
 type InlineProps = {
@@ -60,6 +61,7 @@ function CompactCost({ cost }: CompactProps) {
   const t = useTranslations("prReview");
   const [open, setOpen] = React.useState(false);
   const tipId = React.useId();
+  const anchorRef = React.useRef<HTMLSpanElement>(null);
 
   if (!cost || cost.runs_count === 0) {
     return (
@@ -74,6 +76,7 @@ function CompactCost({ cost }: CompactProps) {
 
   return (
     <span
+      ref={anchorRef}
       style={s.anchor}
       onMouseEnter={show}
       onMouseLeave={hide}
@@ -91,7 +94,14 @@ function CompactCost({ cost }: CompactProps) {
         ({cost.runs_count})
       </span>
       {open && (
-        <span role="tooltip" id={tipId} style={s.tooltip} onClick={(e) => e.stopPropagation()}>
+        <AnchoredPopover
+          anchorRef={anchorRef}
+          align="end"
+          role="tooltip"
+          id={tipId}
+          style={s.tooltip}
+          onClick={(e) => e.stopPropagation()}
+        >
           <span style={s.tipTitle}>{t("cost.tooltipTitle")}</span>
           {cost.runs.map((r) => (
             <span key={r.run_id} style={s.tipRow}>
@@ -120,7 +130,7 @@ function CompactCost({ cost }: CompactProps) {
             </span>
             <span className="mono">{formatUsd(cost.total_usd)}</span>
           </span>
-        </span>
+        </AnchoredPopover>
       )}
     </span>
   );

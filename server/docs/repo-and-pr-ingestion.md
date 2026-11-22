@@ -100,5 +100,5 @@ No table holds these comments; the Files changed tab always shows the GitHub sta
 - A stale code comment points to `POST /repos/:id/reindex`
   (`server/src/modules/repos/service.ts:77`); the real route is `POST /repos/:id/resync`:
   `server/src/modules/repo-intel/routes.ts:43` (`resync`).
-- The PR list upsert does **not** update `branch`, `base`, `additions` or `deletions` on
+- The PR list upsert does **not** update `branch`, `base`, `additions`, `deletions` or `files_count` on
   conflict. Stats change only through the backfill (all three at 0) or a detail fetch.

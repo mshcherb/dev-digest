@@ -16,10 +16,6 @@ export const s = {
   total: { fontSize: 12.5, color: "var(--text-primary)" } satisfies CSSProperties,
   count: { fontSize: 11, color: "var(--text-muted)" } satisfies CSSProperties,
   tooltip: {
-    position: "absolute",
-    top: "calc(100% + 6px)",
-    right: 0,
-    zIndex: 50,
     display: "flex",
     flexDirection: "column",
     gap: 6,

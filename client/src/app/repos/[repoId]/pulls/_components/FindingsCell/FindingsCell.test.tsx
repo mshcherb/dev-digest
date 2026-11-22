@@ -80,6 +80,15 @@ describe("FindingsCell", () => {
     expect(items[0]).toHaveTextContent("92%");
     expect(within(tip).getByText("+1 more")).toBeInTheDocument();
 
+    // Severity icons are labelled from messages, not the raw enum value.
+    expect(within(items[0]!).getByLabelText("Critical")).toBeInTheDocument();
+    expect(within(tip).queryByLabelText("CRITICAL")).not.toBeInTheDocument();
+
+    // Portalled to <body>, so the table card's overflow: hidden cannot clip it.
+    expect(cell.contains(tip)).toBe(false);
+    expect(tip.parentElement).toBe(document.body);
+    expect(tip).toHaveStyle({ position: "fixed" });
+
     fireEvent.keyDown(cell, { key: "Escape" });
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });

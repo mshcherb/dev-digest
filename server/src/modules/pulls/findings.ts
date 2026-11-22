@@ -3,10 +3,10 @@ import type { PrFindingPreview, PrFindings, Severity } from '@devdigest/shared';
 /**
  * M1 — PR-list FINDINGS rollup (pure, unit-tested in `test/pulls-findings.test.ts`).
  *
- * Basis: the latest `done` run of EACH agent on the PR, summed. A failed or
- * cancelled newer run does not hide that agent's previous result (it wrote no
- * review). Runs whose agent was deleted (`agentId = null`) cannot be grouped
- * by agent and are skipped. Every finding counts, accepted/dismissed included —
+ * Basis: the latest `done` run of EACH agent on the PR that still has a review
+ * (the route inner-joins `reviews`), summed. A failed/cancelled newer run, or one
+ * whose review was deleted, does not hide that agent's previous result. Runs whose
+ * agent was deleted (`agentId = null`) cannot be grouped and are skipped. Every finding counts, accepted/dismissed included —
  * the same number `agent_runs.findings_count` shows in the Agent runs timeline.
  */
 export interface DoneRunRow {

@@ -17,7 +17,7 @@ Contracts: `server/src/vendor/shared/contracts/platform.ts:173` (`PrCost`),
 |---|---|---|---|
 | `score` | `reviews` with `kind='review'` | the single newest review of the PR, any agent | the PR has no review |
 | `cost` | `agent_runs` with `status != 'running'` | **every** finished run, newest first | the PR has no finished run |
-| `findings` | `agent_runs` with `status='done'` and an `agent_id`, then their findings via `reviews.run_id` | the latest done run **of each agent**, summed | no agent has a done run |
+| `findings` | `agent_runs` with `status='done'`, an `agent_id` and a `kind='review'` row, then their findings via `reviews.run_id` | the latest done run **of each agent**, summed | no agent has a done run with a review |
 | `status` | `pull_requests` columns | derived, see below | never |
 
 ## score
@@ -41,7 +41,7 @@ Why a run's cost can be null: [llm-providers-and-cost.md](llm-providers-and-cost
 
 ```mermaid
 flowchart LR
-  R["agent_runs: status='done', agent_id not null, newest first"] --> P["pickLatestRunPerAgent: first run per (pr, agent)"]
+  R["agent_runs ⋈ reviews (kind='review'): status='done', agent_id not null, newest first"] --> P["pickLatestRunPerAgent: first run per (pr, agent)"]
   P --> F["findings ⋈ reviews ON reviews.run_id IN (chosen runs), kind='review'"]
   F --> U["rollupFindings: counts per severity, total, preview (top 5)"]
 ```
@@ -49,6 +49,10 @@ flowchart LR
 - `pickLatestRunPerAgent` keeps one run per `(pr, agent)`. A newer failed or cancelled run does not
   hide the agent's previous result, because only `done` runs are candidates. Runs of deleted agents
   (`agent_id` null) are skipped: `server/src/modules/pulls/findings.ts:39` (`pickLatestRunPerAgent`).
+- Only runs that still have a `kind='review'` row are candidates (inner join on
+  `reviews.run_id = agent_runs.id`): `server/src/modules/pulls/routes.ts:167` (`innerJoin`). After
+  `DELETE /reviews/:id` the agent falls back to its previous reviewed run, and a PR whose only review
+  was deleted gets `findings: null` («—»), not `total: 0`. Covered by `server/test/pulls-findings.it.test.ts`.
 - `rollupFindings` gives every chosen PR an entry, with `total: 0` when nothing was found. Unknown
   severities are dropped. Accepted and dismissed findings still count:
   `server/src/modules/pulls/findings.ts:61` (`rollupFindings`).
@@ -80,7 +84,7 @@ flowchart TD
 Two situations make the columns look inconsistent; both are correct:
 
 1. **Fresh seed.** PR #482 shows score 61 but `cost` and `findings` are null. The seed review has
-   no run (`server/src/db/seed.ts:136`, `insert(t.reviews)`), and cost and findings are built from runs.
+   no run (`server/src/db/seed.ts:137`, `insert(t.reviews)`), and cost and findings are built from runs.
 2. **Two agents.** The score ring shows whichever agent's review is newest; FINDINGS sums the latest
    done run of **both** agents.
 

@@ -12,6 +12,12 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 ## What Works
 <!-- Approaches and solutions that proved effective here. -->
 
+### 2026-11-22 — Resolved: clean DB via `./scripts/e2e.sh`, never `docker compose down -v`
+**Where:** `README.md:160` (`Need a clean DB`), `e2e/README.md:46` (`Never docker compose down -v`), `CLAUDE.md:36` (`Do not touch`)
+**Symptom:** answers the Open Question «README advises `docker compose down -v`, e2e README forbids it».
+**Cause:** f4441c1 replaced the root README's "Reset everything" (`docker compose down -v`) with a "Need a clean DB" note pointing to `./scripts/e2e.sh`; all docs now agree.
+**Do instead:** for a clean DB run `./scripts/e2e.sh` (isolated stack, own ports, own DB). `down -v` deletes the `devdigest_pgdata` volume with every imported repo and review; ask the user before touching it.
+
 ## What Doesn't Work
 <!-- Dead ends, rejected approaches, antipatterns: what was tried, why it failed, what to do instead. Most valuable section. -->
 
@@ -41,3 +47,9 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 
 ## Open Questions
 <!-- Unresolved issues. When one is answered, add a new entry in the right section that cites this title. -->
+
+### 2026-11-21 — README advises `docker compose down -v`, e2e README forbids it
+**Where:** `README.md:160` (`Need a clean DB`, formerly "Reset everything"), `e2e/README.md:46` (`Never docker compose down -v`)
+**Symptom:** root README "Reset everything" suggests `down -v`; `e2e/README.md` warns it deletes every imported repo and review.
+**Cause:** docs written at different times.
+**Fix / status:** open. For a clean DB use `./scripts/e2e.sh`. The root README should be aligned.

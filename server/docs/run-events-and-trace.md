@@ -95,11 +95,15 @@ It assumes one API instance per database: `server/src/app.ts:82` (`reapStaleRuns
 
 ## Pitfalls
 
-- **Cancel during the LLM call does not stop the run.** In single-pass there is one chunk, so the
-  only checkpoint has already passed. `cancelRun` calls `runBus.complete`, which clears the cancel
-  flag (`server/src/platform/sse.ts:79`), and `completeAgentRun` has no status guard
-  (`server/src/modules/reviews/repository/run.repo.ts:142`). When the call returns, the review is
-  saved and the row becomes `done` again.
+- **Cancel does not stop a running review, in single-pass or map-reduce.** `cancelRun` sets the
+  cancel flag, awaits `cancelRunIfRunning`, then calls `runBus.complete` right away
+  (`server/src/modules/reviews/service.ts:87`, `ReviewService.cancelRun`), and `complete` deletes
+  the flag (`server/src/platform/sse.ts:79`). The runner reads the flag only at chunk checkpoints
+  (`reviewer-core/src/review/run.ts:164`, `checkCancelled`), so it sees it only if a checkpoint
+  falls inside that one-UPDATE window; every later chunk sees `false`. When the run finishes,
+  `completeAgentRun` has no `status = 'running'` guard
+  (`server/src/modules/reviews/repository/run.repo.ts:142`), so the review is saved and the row
+  turns from `cancelled` back to `done`. Not fixed yet (see `server/insights.md`).
 - `RunBus.complete` deletes the emitter but never the buffer
   (`server/src/platform/sse.ts:76`, `RunBus.complete`): buffers stay in memory until restart.
 - Failed and cancelled runs report `0/0` tokens, not null. Treat "both zero" as "no usage"

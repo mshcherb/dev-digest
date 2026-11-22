@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-/** Co-located styles for FindingsCell (anchor + popover follow RunCostBadge's tooltip). */
+/** Co-located styles for FindingsCell (popover is placed by AnchoredPopover, like RunCostBadge's tooltip). */
 export const s = {
   muted: { fontSize: 12, color: "var(--text-muted)" } satisfies CSSProperties,
   anchor: {
@@ -13,10 +13,6 @@ export const s = {
     borderRadius: 4,
   } satisfies CSSProperties,
   popover: {
-    position: "absolute",
-    top: "calc(100% + 6px)",
-    left: 0,
-    zIndex: 50,
     display: "flex",
     flexDirection: "column",
     gap: 8,

@@ -92,7 +92,7 @@ page.tsx
    `client/src/app/repos/[repoId]/pulls/[number]/_components/FindingsPanel/helpers.ts:24` (`countBySeverity`).
 3. `filterBySeverity` applies the active level; clicking the active counter clears it:
    `client/src/app/repos/[repoId]/pulls/[number]/_components/FindingsPanel/FindingsPanel.tsx:39` (`toggleSeverity`).
-4. The list container is keyed by `${severity}:${hideLow}`, so cards remount and the first card
+4. The list container is keyed by `` `${severity ?? "all"}:${hideLow}` ``, so cards remount and the first card
    opens again after any filter change: `client/src/app/repos/[repoId]/pulls/[number]/_components/FindingsPanel/FindingsPanel.tsx:80` (`key`).
 
 Keyboard: `j`/`k` move focus, `a`/`d` accept or dismiss the focused card, ignored inside inputs:

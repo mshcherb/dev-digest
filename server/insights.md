@@ -41,7 +41,7 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 **Fix / status:** trust the code; the README sentence is a simplification.
 
 ### 2026-11-21 — `.gitignore` mentions a missing `agent-runner/`
-**Where:** `.gitignore:3` (`agent-runner/dist`)
+**Where:** `.gitignore:5` (`!agent-runner/dist/`)
 **Cause:** the CI runner package returns in milestone M6 (Export to CI).
 **Fix / status:** expected.
 
@@ -52,10 +52,16 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 **Do instead:** do not "unify" one into the other without a spec change; to join run → findings use `reviews.run_id`, never `reviews.agent_id`/`created_at`.
 
 ### 2026-11-22 — PR list syncs on GET; `/poll` has no client caller; seed review has no run
-**Where:** `server/src/modules/pulls/routes.ts:47` (`listPullRequests`), `server/src/modules/polling/routes.ts:20` (`/repos/:id/poll`), `server/src/db/seed.ts:136` (`insert(t.reviews)`)
+**Where:** `server/src/modules/pulls/routes.ts:47` (`listPullRequests`), `server/src/modules/polling/routes.ts:20` (`/repos/:id/poll`), `server/src/db/seed.ts:137` (`insert(t.reviews)`)
 **Symptom:** you look for the "import PRs" step and find only `POST /repos/:id/poll`. On a fresh seed, PR #482 shows score 61 but no cost and no findings.
 **Cause:** `GET /repos/:id/pulls` upserts from GitHub and backfills stats on every read (the client refetches every 60 s). The seed inserts a `review` with no `agent_runs` row and no `run_id`, and cost and findings are built from runs.
 **Do instead:** change PR sync in `pulls/routes.ts`, not `polling/`. Do not treat the seed's null cost/findings as a bug. Details: `server/docs/repo-and-pr-ingestion.md`, `server/docs/pr-list-aggregates.md`.
+
+### 2026-11-22 — a `done` run can have no review (DELETE /reviews/:id)
+**Where:** `server/src/modules/reviews/routes.ts:135` (`/reviews/:id`), `server/src/modules/pulls/routes.ts:167` (`innerJoin` reviews)
+**Symptom:** after deleting a review, the PR list showed FINDINGS `0` instead of the agent's previous result (or «—»).
+**Cause:** `DELETE /reviews/:id` removes the review and its findings but leaves the `agent_runs` row `done`; a "latest done run" picked from `agent_runs` alone selects the now-empty run.
+**Do instead:** any run-based aggregate that reads review content must inner-join `reviews` on `reviews.run_id = agent_runs.id AND kind = 'review'` before picking the latest run. Cost stays run-based (the money was spent). Test: `server/test/pulls-findings.it.test.ts`.
 
 ## Tool & Library Notes
 <!-- Dependency and tooling quirks: name the package and version. -->
@@ -67,13 +73,19 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 **Fix / status:** CI calls `pnpm exec vitest run …` directly, so it does not depend on local scripts.
 
 ### 2026-11-22 — `platform/model-router.ts` contains a NUL byte, so grep skips it
-**Where:** `server/src/platform/model-router.ts:44` (`PromptCache`)
+**Where:** `server/src/platform/model-router.ts:36` (`hashKey`)
 **Symptom:** `grep -n PromptCache platform/model-router.ts` prints nothing; `file` reports `data`.
-**Cause:** a literal `'\0'` join separator inside the file makes grep treat it as binary.
+**Cause:** `hashKey` joins its parts with a raw NUL byte typed into the source (not the `'\0'` escape), so grep treats the file as binary.
 **Do instead:** use `grep -a` (or the Grep tool) for this file.
 
 ## Recurring Errors & Fixes
 <!-- Error message or symptom → cause → exact fix. -->
+
+### 2026-11-22 — API process exits after "Refresh" on the demo repo (any failed job killed it)
+**Where:** `server/src/platform/jobs.ts:113` (`JobRunner.enqueue` → `done.catch`), `server/src/modules/repos/service.ts:115` (`RepoService.refresh`), `server/test/jobs-failure.test.ts:36` (`does not leave an unhandled rejection`)
+**Symptom:** UI shows "Cannot reach the DevDigest engine at http://localhost:3001"; the last request fails with `ERR_EMPTY_RESPONSE`; the dev terminal ends with simple-git `fatal: repository 'https://github.com/acme/payments-api.git/' not found` and `Node.js v22…`. `tsx watch` stays alive but restarts the API only when a source file's content changes.
+**Cause:** a failed job re-throws into its `done` promise, and fire-and-forget callers (`refresh`, `add`) never handle `done`, so Node 22 exits on the unhandled rejection. The seeded `acme/payments-api` is not on GitHub, so its clone always fails; a real repo with a network or auth error failed the same way.
+**Do instead:** fixed: `enqueue` now attaches `done.catch(onError)` (default `console.error`), the `jobs` row still records `failed` + error, and `done` still rejects for callers that await it. Never return a rejecting promise from a fire-and-forget API without handling it inside.
 
 ## Session Notes
 <!-- Dated wrap-ups: what changed, what is left. 2–3 lines each. -->
@@ -87,8 +99,8 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 **Cause:** the security backport (24a8bc4) hardened only the root compose file.
 **Fix / status:** open. Either delete the server copy or bind it to loopback too. Use the root file.
 
-### 2026-11-22 — cancelling a single-pass run mid-LLM-call does not stop it
-**Where:** `server/src/modules/reviews/service.ts:85` (`ReviewService.cancelRun`), `server/src/platform/sse.ts:79` (`RunBus.complete`), `server/src/modules/reviews/repository/run.repo.ts:142` (`completeAgentRun`), `reviewer-core/src/review/run.ts:164` (`checkCancelled`)
-**Symptom:** (found by reading the code, not reproduced) a run cancelled while its one LLM call is in flight later shows `done`, with a review and findings.
-**Cause:** the only checkpoint is before each chunk, and single-pass has one chunk. `cancelRun` calls `runBus.complete`, which clears the cancel flag, and `completeAgentRun` has no `status = 'running'` guard.
-**Do instead:** open. Either keep the flag until the runner exits, or guard `completeAgentRun('done')` with `status = 'running'`. Documented in `server/docs/run-events-and-trace.md` (Pitfalls).
+### 2026-11-22 — cancelling a running review does not stop it (single-pass or map-reduce)
+**Where:** `server/src/modules/reviews/service.ts:87` (`ReviewService.cancelRun`: `runBus.cancel` → `cancelRunIfRunning` → `runBus.complete`), `server/src/platform/sse.ts:79` (`RunBus.complete` → `cancelled.delete`), `server/src/modules/reviews/run-executor.ts:217` (`checkCancelled`), `reviewer-core/src/review/run.ts:164` (`checkCancelled`), `server/src/modules/reviews/repository/run.repo.ts:142` (`completeAgentRun`)
+**Symptom:** (found by reading the code, not reproduced) a cancelled run keeps going and later shows `done`, with a review and findings.
+**Cause:** `cancelRun` sets the cancel flag, awaits `cancelRunIfRunning`, then immediately calls `runBus.complete`, which deletes the flag. The runner reads the flag only synchronously at chunk checkpoints, so it sees it only if a checkpoint lands inside that one-UPDATE window. Every later checkpoint (all map-reduce chunks, the single-pass one if not yet reached) sees `false`. When the runner finishes, `completeAgentRun` (no `status = 'running'` guard) overwrites `cancelled` with `done`.
+**Do instead:** open. Keep the flag until the runner exits (do not clear it in `complete`, or clear it from the executor's `finally`), and guard `completeAgentRun('done')` with `status = 'running'`. Documented in `server/docs/run-events-and-trace.md` (Pitfalls).

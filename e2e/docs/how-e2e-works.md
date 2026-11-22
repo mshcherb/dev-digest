@@ -16,7 +16,7 @@ sequenceDiagram
   SH->>SH: export DATABASE_URL, API_PORT, WEB_PORT, NEXT_PUBLIC_API_BASE, E2E_BASE_URL
   SH->>SH: trap cleanup EXIT INT TERM
   SH->>PG: docker run --rm (no volume) + wait until healthy
-  SH->>SH: install deps if missing (server, client: pnpm; reviewer-core: npm ci)
+  SH->>SH: install deps if missing (server and client with pnpm, reviewer-core with npm ci)
   SH->>SH: guard: DATABASE_URL must point at :5433
   SH->>PG: pnpm db:migrate, pnpm db:seed
   SH->>API: pnpm exec tsx src/server.ts &  → poll /health
@@ -30,7 +30,7 @@ Key mechanics, with the line that does it:
 - **Env is exported before anything starts.** dotenv never overrides variables that are already
   set, so the exported values beat `server/.env` without editing it. `WEB_PORT` matters too: the
   API derives its CORS origin from it. `127.0.0.1` avoids an IPv6 `::1` vs IPv4 mismatch with the
-  container: `scripts/e2e.sh:39` (`export DATABASE_URL`).
+  container: `scripts/e2e.sh:40` (`export DATABASE_URL`).
 - **The trap is installed before the first process starts**, so Ctrl-C or a failure still tears
   everything down: `scripts/e2e.sh:82` (`trap cleanup EXIT INT TERM`).
 - **`kill_tree` walks the process tree leaves-first.** `pnpm exec tsx` and `next dev` run the real
@@ -52,8 +52,9 @@ Key mechanics, with the line that does it:
 
 ### How CI differs
 
-`.github/workflows/e2e-web.yml` does not call this script. It uses a Postgres service, runs
-migrate and seed, starts the API with `tsx`, and serves the client with **`pnpm build` + `pnpm start`**
+`.github/workflows/e2e-web.yml` does not call this script. It has no Postgres service: it starts
+the repo's compose Postgres with `docker compose up -d` and polls its health
+(`.github/workflows/e2e-web.yml:56`), then runs migrate and seed, starts the API with `tsx`, and serves the client with **`pnpm build` + `pnpm start`**
 (a production build), while the local script uses `next dev`: `.github/workflows/e2e-web.yml:101`
 (`pnpm build`). A flow that passes locally can still fail in CI on a build-only error, and the
 reverse.

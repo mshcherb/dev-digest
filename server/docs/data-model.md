@@ -45,7 +45,7 @@ Solid lines are real foreign keys; dotted lines are plain uuid columns without a
 - **Deleting a PR does not delete its runs.** `agent_runs.pr_id` is `set null`
   (`server/src/db/schema/runs.ts:14`), while reviews and findings cascade away.
 - **The seed review has no run.** `pnpm db:seed` inserts a `review` with score 61 and two findings
-  but no `agent_runs` row and no `run_id`: `server/src/db/seed.ts:136` (`insert(t.reviews)`).
+  but no `agent_runs` row and no `run_id`: `server/src/db/seed.ts:137` (`insert(t.reviews)`).
 
 ## Nullable columns on `agent_runs`
 
@@ -70,13 +70,14 @@ Not part of the review path, but not empty: `users`, `workspaces`, `workspace_me
 
 ## Empty tables and their roadmap row
 
-These tables exist so milestones only add modules. No module writes them today. "Roadmap row"
+These tables exist so milestones only add modules. No module writes them today, except
+`agent_skills`: the agents module already has write code for it (see the table row). "Roadmap row"
 refers to the milestone table in [`../../README.md`](../../README.md) (lines 82–89); scope details
 belong in `specs/`, not here.
 
 | Table | Roadmap row | Schema |
 |---|---|---|
-| `skills`, `skill_versions`, `agent_skills` | M2 Skills in the product | `server/src/db/schema/skills.ts:5` (`skills`) |
+| `skills`, `skill_versions`, `agent_skills` | M2 Skills in the product | `server/src/db/schema/skills.ts:5` (`skills`). `agent_skills` is not empty-by-design: `POST /agents/:id/skills` writes it through `server/src/modules/agents/repository.ts:229` (`setSkills`) and `:208` (`linkSkill`) |
 | `conventions` | M2 Conventions extractor | `server/src/db/schema/knowledge.ts:31` (`conventions`) |
 | `pr_intent` | M3 Intent layer | `server/src/db/schema/reviews.ts:48` (`prIntent`) |
 | `onboarding` | M5 Onboarding generator | `server/src/db/schema/context.ts:120` (`onboarding`) |

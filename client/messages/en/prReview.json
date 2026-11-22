@@ -108,7 +108,12 @@
       "more": "+{count} more",
       "confidence": "{value}%",
       "confidenceTitle": "Confidence",
-      "aria": "{count, plural, one {# finding} other {# findings}}: {critical} critical, {warning} warning, {suggestion} suggestion"
+      "aria": "{count, plural, one {# finding} other {# findings}}: {critical} critical, {warning} warning, {suggestion} suggestion",
+      "severity": {
+        "CRITICAL": "Critical",
+        "WARNING": "Warning",
+        "SUGGESTION": "Suggestion"
+      }
     },
     "filesCount": "{count} files",
     "errorTitle": "Couldn’t load pull requests",

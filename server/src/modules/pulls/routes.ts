@@ -156,12 +156,18 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
 
     // M1 FINDINGS column: latest `done` run of EACH agent per PR, summed.
     // Two IN-queries (runs, then findings of the chosen runs) + JS grouping.
+    // Only runs that still have a review count: after DELETE /reviews/:id the
+    // agent falls back to its previous reviewed run (or the PR shows "—").
     let findingsByPr = new Map<string, NonNullable<PrMeta['findings']>>();
     if (prIds.length > 0) {
       const latestRuns = pickLatestRunPerAgent(
         await container.db
           .select({ prId: t.agentRuns.prId, agentId: t.agentRuns.agentId, runId: t.agentRuns.id })
           .from(t.agentRuns)
+          .innerJoin(
+            t.reviews,
+            and(eq(t.reviews.runId, t.agentRuns.id), eq(t.reviews.kind, 'review')),
+          )
           .where(
             and(
               inArray(t.agentRuns.prId, prIds),

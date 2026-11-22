@@ -20,6 +20,12 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 **Cause:** React removes the longhand on re-render; the browser falls back to the shorthand's color (`currentColor`).
 **Do instead:** never mix `border`/`borderLeft*` shorthands with longhands in inline styles; use `borderWidth`/`borderStyle`/`borderColor` only. Verify toggled styles in a real browser. Known offender: `FindingCard/styles.ts`.
 
+### 2026-11-22 — absolute-positioned popovers inside the PR list get clipped
+**Where:** `client/src/app/repos/[repoId]/pulls/styles.ts:86` (`tableCard`), `client/src/components/anchored-popover/AnchoredPopover.tsx:20` (`AnchoredPopover`)
+**Symptom:** the FINDINGS popover / COST tooltip is cut off on the last rows and on a one-PR list; jsdom tests pass.
+**Cause:** `tableCard` has `overflow: hidden` (for its rounded corners), which clips any `position: absolute` child.
+**Do instead:** render row popovers through `AnchoredPopover` (portal to `<body>`, `position: fixed`, flips up, caps height). Keep `onClick={e => e.stopPropagation()}` on it: React events still bubble through the portal to the row link. Check the last row in a real browser.
+
 ## Codebase Patterns
 <!-- Conventions and architecture decisions that are not obvious from the code. -->
 

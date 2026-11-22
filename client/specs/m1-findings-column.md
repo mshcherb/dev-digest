@@ -31,8 +31,12 @@ dismissed findings; changes to `SeverityCounters` (PR page) or the COST column.
 
 ## Acceptance
 - `FindingsCell.test.tsx`: «—», hidden zero levels, popover on focus (title, order, `path:line`,
-  «+K more»), Escape closes.
+  «+K more»), Escape closes, severity icons labelled from `messages/` (not the raw enum),
+  popover portalled to `<body>` with `position: fixed`.
+- Popover/tooltip (FindingsCell and RunCostBadge compact) render through
+  `src/components/anchored-popover` so the table card's `overflow: hidden` cannot clip them;
+  near the viewport bottom they open upward (`placement.test.ts`).
 - `pnpm test` and `pnpm typecheck` green.
 
 ## Status
-in progress
+done

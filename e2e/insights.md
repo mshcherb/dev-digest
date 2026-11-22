@@ -29,7 +29,7 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 **Do instead:** keep `e2e/specs/` flows-only and do not recreate `docs/specs/`.
 
 ### 2026-11-22 — the hermetic stack isolates DB and ports, not secrets
-**Where:** `scripts/e2e.sh:39` (`export DATABASE_URL`), `server/src/platform/container.ts:158` (`secrets.get('GITHUB_TOKEN')`)
+**Where:** `scripts/e2e.sh:40` (`export DATABASE_URL`), `server/src/platform/container.ts:158` (`secrets.get('GITHUB_TOKEN')`)
 **Symptom:** with a real `GITHUB_TOKEN` in `~/.devdigest/secrets.json`, flows are slower, and the e2e API logs GitHub errors for `acme/payments-api`.
 **Cause:** `SecretsProvider` reads the developer's secrets file. The PR list and detail routes try GitHub, fail, and fall back to the seeded rows.
 **Do instead:** expected; flows still pass. Do not "fix" it by stubbing GitHub in the seed.
