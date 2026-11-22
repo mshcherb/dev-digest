@@ -20,7 +20,7 @@ agent-browser CLI (global install) · TypeScript runner `run.ts` executed with t
 - Each step is `{ "cmd": [...], "label": "..." }`. `{BASE}` is substituted with the base URL.
 - Assertions are `wait --text` / `wait --url` (non-zero exit = failure), plus optional `assert.stdoutIncludes`.
 - Locators are deterministic only: `--url`, `--text`, `find role|text|label`.
-- Flows use **read-only seeded data**: repo `acme/payments-api`, PR `#482`, the two built-in agents.
+- Flows use **read-only seeded data**: repo `acme/payments-api`, PR `#482`, the three built-in agents.
 - New flow = next `NN-` number. Keep it independent of model output.
 
 ## Gotchas
@@ -35,5 +35,6 @@ agent-browser CLI (global install) · TypeScript runner `run.ts` executed with t
 ## Documentation (open when relevant)
 - Flow format and run modes → `README.md`
 - Suite map and CI → `../TESTING.md`
-- Deep dives → `docs/` · Known pitfalls → `insights.md`
-- Here `specs/` holds **test flows**, not feature specs. Feature specs for e2e live in `docs/specs/`.
+- Deep dives (`e2e.sh` internals, which seed lines each flow depends on) → `docs/` · Known pitfalls → `insights.md`
+- Here `specs/` holds **test flows**, not feature specs. e2e has no feature specs: a feature's acceptance flow
+  is described in that feature's spec in `../client/specs/` or `../server/specs/`.

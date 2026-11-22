@@ -47,6 +47,7 @@ Only Postgres runs in Docker; API and web run on the host.
   - `README.md`: what the package is and how it is wired (diagrams live here)
   - `docs/`: deep dives on how things work today
   - `specs/<feature>.md`: what we are building. Check it before starting a feature.
+    Exception: `e2e/specs/` holds test flows; e2e has no feature specs of its own.
   - `insights.md`: lessons in 7 fixed sections. Read it before changing or debugging that package.
 - Extra `insights.md`: `server/src/modules/repo-intel/` (indexer) and the repo root (cross-package, scripts, CI).
 

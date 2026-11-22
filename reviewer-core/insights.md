@@ -27,6 +27,12 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 **Symptom:** map-reduce strategy, `reduce()`, `toReview()` (CI payload), and `FULL_FILE_KINDS` (`secret_leak`, `phantom`, `hook`) exist although the README assigns them to M6/M7.
 **Fix / status:** expected. Later milestones only start feeding these paths.
 
+### 2026-11-22 — the verdict survives grounding unchanged; only the score is recomputed
+**Where:** `reviewer-core/src/review/run.ts:208` (`scoreFromFindings(ground.kept)`), `reviewer-core/src/review/reduce.ts:43` (`reduceReviews`)
+**Symptom:** a review can read `request_changes` with score 100 when grounding dropped every finding.
+**Cause:** `reviewPullRequest` replaces `findings` and `score` but keeps the model's `verdict` (the worst verdict across chunks in map-reduce).
+**Do instead:** do not read the verdict as a deterministic signal. Use the score or `countBlockers`. A fix would derive the verdict from the kept findings too.
+
 ## Tool & Library Notes
 <!-- Dependency and tooling quirks: name the package and version. -->
 

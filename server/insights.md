@@ -51,6 +51,12 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 **Cause:** SCORE = the single newest `kind='review'` row for the PR; FINDINGS = the latest `status='done'` run of each agent, summed (product decision, `server/specs/m1-findings-column.md`). Runs link to findings only via `reviews.run_id` (no FK).
 **Do instead:** do not "unify" one into the other without a spec change; to join run → findings use `reviews.run_id`, never `reviews.agent_id`/`created_at`.
 
+### 2026-11-22 — PR list syncs on GET; `/poll` has no client caller; seed review has no run
+**Where:** `server/src/modules/pulls/routes.ts:47` (`listPullRequests`), `server/src/modules/polling/routes.ts:20` (`/repos/:id/poll`), `server/src/db/seed.ts:136` (`insert(t.reviews)`)
+**Symptom:** you look for the "import PRs" step and find only `POST /repos/:id/poll`. On a fresh seed, PR #482 shows score 61 but no cost and no findings.
+**Cause:** `GET /repos/:id/pulls` upserts from GitHub and backfills stats on every read (the client refetches every 60 s). The seed inserts a `review` with no `agent_runs` row and no `run_id`, and cost and findings are built from runs.
+**Do instead:** change PR sync in `pulls/routes.ts`, not `polling/`. Do not treat the seed's null cost/findings as a bug. Details: `server/docs/repo-and-pr-ingestion.md`, `server/docs/pr-list-aggregates.md`.
+
 ## Tool & Library Notes
 <!-- Dependency and tooling quirks: name the package and version. -->
 
@@ -59,6 +65,12 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 **Symptom:** `TESTING.md` says the file is `skip-worktree`, but `git ls-files -v` shows a normal `H` flag locally.
 **Cause:** the flag is local git state, not committed.
 **Fix / status:** CI calls `pnpm exec vitest run …` directly, so it does not depend on local scripts.
+
+### 2026-11-22 — `platform/model-router.ts` contains a NUL byte, so grep skips it
+**Where:** `server/src/platform/model-router.ts:44` (`PromptCache`)
+**Symptom:** `grep -n PromptCache platform/model-router.ts` prints nothing; `file` reports `data`.
+**Cause:** a literal `'\0'` join separator inside the file makes grep treat it as binary.
+**Do instead:** use `grep -a` (or the Grep tool) for this file.
 
 ## Recurring Errors & Fixes
 <!-- Error message or symptom → cause → exact fix. -->
@@ -74,3 +86,9 @@ Written through the `engineering-insights` skill (`.claude/skills/engineering-in
 **Symptom:** the root `docker-compose.yml` binds `127.0.0.1:5432`, but `server/docker-compose.yml` binds `5432:5432` with the well-known password `devdigest/devdigest`.
 **Cause:** the security backport (24a8bc4) hardened only the root compose file.
 **Fix / status:** open. Either delete the server copy or bind it to loopback too. Use the root file.
+
+### 2026-11-22 — cancelling a single-pass run mid-LLM-call does not stop it
+**Where:** `server/src/modules/reviews/service.ts:85` (`ReviewService.cancelRun`), `server/src/platform/sse.ts:79` (`RunBus.complete`), `server/src/modules/reviews/repository/run.repo.ts:142` (`completeAgentRun`), `reviewer-core/src/review/run.ts:164` (`checkCancelled`)
+**Symptom:** (found by reading the code, not reproduced) a run cancelled while its one LLM call is in flight later shows `done`, with a review and findings.
+**Cause:** the only checkpoint is before each chunk, and single-pass has one chunk. `cancelRun` calls `runBus.complete`, which clears the cancel flag, and `completeAgentRun` has no `status = 'running'` guard.
+**Do instead:** open. Either keep the flag until the runner exits, or guard `completeAgentRun('done')` with `status = 'running'`. Documented in `server/docs/run-events-and-trace.md` (Pitfalls).
