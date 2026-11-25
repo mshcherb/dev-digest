@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, ne } from 'drizzle-orm';
 import type { PrMeta, PrDetail, GitHubClient, PrReviewComment } from '@devdigest/shared';
 import { PrCommentInput } from '@devdigest/shared';
 import * as t from '../../db/schema.js';
@@ -8,6 +8,8 @@ import { getContext } from '../_shared/context.js';
 import { IdParams } from '../_shared/schemas.js';
 import { AppError, NotFoundError } from '../../platform/errors.js';
 import { deriveReviewStatus } from './status.js';
+import { rollupRunCosts } from './cost.js';
+import { pickLatestRunPerAgent, rollupFindings } from './findings.js';
 
 /**
  * F1 — pulls module. PR import via Octokit (list + per-PR detail).
@@ -113,8 +115,8 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
 
     // Latest-review SCORE per PR for the list's score ring. Computed on read
     // from reviews (no FK denorm); the list is small, so one IN-query + JS
-    // grouping is cheap. (The per-severity FINDINGS breakdown is intentionally
-    // not surfaced on the list — findings live on the PR detail page.)
+    // grouping is cheap. The FINDINGS column is computed separately below
+    // (latest done run of each agent, not the latest review overall).
     const prIds = rows.map((r) => r.id);
     const latestReviewByPr = new Map<string, { score: number | null }>();
     if (prIds.length > 0) {
@@ -127,6 +129,75 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
       for (const rv of reviewRows) {
         if (!latestReviewByPr.has(rv.prId)) latestReviewByPr.set(rv.prId, { score: rv.score });
       }
+    }
+
+    // M1 COST column: every finished (non-running) agent run per PR, newest
+    // first, summed in JS (same one-IN-query pattern as the score above).
+    const costByPr =
+      prIds.length > 0
+        ? rollupRunCosts(
+            await container.db
+              .select({
+                prId: t.agentRuns.prId,
+                runId: t.agentRuns.id,
+                agentName: t.agents.name,
+                model: t.agentRuns.model,
+                status: t.agentRuns.status,
+                ranAt: t.agentRuns.ranAt,
+                costUsd: t.agentRuns.costUsd,
+              })
+              .from(t.agentRuns)
+              .leftJoin(t.agents, eq(t.agents.id, t.agentRuns.agentId))
+              .where(and(inArray(t.agentRuns.prId, prIds), ne(t.agentRuns.status, 'running')))
+              .orderBy(desc(t.agentRuns.ranAt))
+              .then((rs) => rs.flatMap((x) => (x.prId ? [{ ...x, prId: x.prId }] : []))),
+          )
+        : new Map();
+
+    // M1 FINDINGS column: latest `done` run of EACH agent per PR, summed.
+    // Two IN-queries (runs, then findings of the chosen runs) + JS grouping.
+    // Only runs that still have a review count: after DELETE /reviews/:id the
+    // agent falls back to its previous reviewed run (or the PR shows "—").
+    let findingsByPr = new Map<string, NonNullable<PrMeta['findings']>>();
+    if (prIds.length > 0) {
+      const latestRuns = pickLatestRunPerAgent(
+        await container.db
+          .select({ prId: t.agentRuns.prId, agentId: t.agentRuns.agentId, runId: t.agentRuns.id })
+          .from(t.agentRuns)
+          .innerJoin(
+            t.reviews,
+            and(eq(t.reviews.runId, t.agentRuns.id), eq(t.reviews.kind, 'review')),
+          )
+          .where(
+            and(
+              inArray(t.agentRuns.prId, prIds),
+              eq(t.agentRuns.status, 'done'),
+              isNotNull(t.agentRuns.agentId),
+            ),
+          )
+          .orderBy(desc(t.agentRuns.ranAt))
+          .then((rs) => rs.flatMap((x) => (x.prId ? [{ ...x, prId: x.prId }] : []))),
+      );
+      const runIds = [...latestRuns.keys()];
+      const findingRows =
+        runIds.length > 0
+          ? await container.db
+              .select({
+                runId: t.reviews.runId,
+                id: t.findings.id,
+                severity: t.findings.severity,
+                title: t.findings.title,
+                file: t.findings.file,
+                startLine: t.findings.startLine,
+                confidence: t.findings.confidence,
+                rationale: t.findings.rationale,
+              })
+              .from(t.findings)
+              .innerJoin(t.reviews, eq(t.reviews.id, t.findings.reviewId))
+              .where(and(inArray(t.reviews.runId, runIds), eq(t.reviews.kind, 'review')))
+              .then((rs) => rs.flatMap((x) => (x.runId ? [{ ...x, runId: x.runId }] : [])))
+          : [];
+      findingsByPr = rollupFindings(latestRuns, findingRows);
     }
 
     const now = Date.now();
@@ -153,6 +224,8 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
         opened_at: r.openedAt?.toISOString() ?? null,
         updated_at: r.updatedAt?.toISOString() ?? null,
         score: review ? review.score : null,
+        cost: costByPr.get(r.id) ?? null,
+        findings: findingsByPr.get(r.id) ?? null,
       };
     });
   });

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Provider } from './knowledge.js';
+import { Severity } from './findings.js';
 
 /**
  * Platform / scaffolding DTOs owned by F1:
@@ -156,6 +157,54 @@ export type Repo = z.infer<typeof Repo>;
 export const PrStatus = z.enum(['needs_review', 'reviewed', 'stale', 'open', 'closed', 'merged']);
 export type PrStatus = z.infer<typeof PrStatus>;
 
+/** One finished agent run of a PR, as listed in the PR-list cost tooltip. */
+export const PrRunCost = z.object({
+  run_id: z.string(),
+  agent_name: z.string().nullable(),
+  model: z.string().nullable(),
+  status: z.string().nullable(),
+  ran_at: z.string().nullable(),
+  /** null = unknown (failed run, unknown model price, or run made before M1). */
+  cost_usd: z.number().nullable(),
+});
+export type PrRunCost = z.infer<typeof PrRunCost>;
+
+/** Sum of every finished run's known cost for a PR. */
+export const PrCost = z.object({
+  /** null when no run has a known cost. */
+  total_usd: z.number().nullable(),
+  runs_count: z.number().int(),
+  /** Newest first. */
+  runs: z.array(PrRunCost),
+});
+export type PrCost = z.infer<typeof PrCost>;
+
+/** One finding in the PR-list FINDINGS popover preview. */
+export const PrFindingPreview = z.object({
+  id: z.string(),
+  severity: Severity,
+  title: z.string(),
+  file: z.string(),
+  start_line: z.number().int(),
+  confidence: z.number(),
+  /** Truncated server-side (≈160 chars). */
+  rationale: z.string(),
+});
+export type PrFindingPreview = z.infer<typeof PrFindingPreview>;
+
+/** Findings of the latest `done` run of each agent on a PR, summed. */
+export const PrFindings = z.object({
+  total: z.number().int(),
+  counts: z.object({
+    CRITICAL: z.number().int(),
+    WARNING: z.number().int(),
+    SUGGESTION: z.number().int(),
+  }),
+  /** CRITICAL first, then confidence desc; capped (total - preview.length = "+K more"). */
+  preview: z.array(PrFindingPreview),
+});
+export type PrFindings = z.infer<typeof PrFindings>;
+
 export const PrMeta = z.object({
   id: z.string().nullish(),
   number: z.number().int(),
@@ -172,8 +221,13 @@ export const PrMeta = z.object({
   updated_at: z.string().nullish(),
   // Latest-review score (list endpoint only; null/absent until reviewed).
   score: z.number().int().nullish(),
+  // M1 run cost rollup (list endpoint only; null/absent when the PR has no finished runs).
+  cost: PrCost.nullish(),
+  // M1 FINDINGS column (list endpoint only; null/absent when the PR has no done run).
+  findings: PrFindings.nullish(),
 });
 export type PrMeta = z.infer<typeof PrMeta>;
+
 
 export const PrFile = z.object({
   path: z.string(),

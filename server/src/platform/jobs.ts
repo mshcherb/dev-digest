@@ -19,11 +19,16 @@ export interface JobRunnerOptions {
   concurrency?: number;
   timeoutMs?: number;
   retries?: number;
+  /** Called once when a job ultimately fails (after retries). Default: console.error. */
+  onError?: (err: unknown, job: { id: string; kind: string }) => void;
 }
 
 export interface EnqueuedJob {
   id: string;
-  /** Resolves when the job finishes (or rejects if it ultimately fails). */
+  /**
+   * Resolves when the job finishes (or rejects if it ultimately fails).
+   * Optional to await: the runner already handles the rejection.
+   */
   done: Promise<void>;
 }
 
@@ -32,6 +37,7 @@ export class JobRunner {
   private handlers = new Map<string, JobHandler>();
   private timeoutMs: number;
   private retries: number;
+  private onError: NonNullable<JobRunnerOptions['onError']>;
 
   constructor(
     private db: Db,
@@ -40,6 +46,10 @@ export class JobRunner {
     this.queue = new PQueue({ concurrency: opts.concurrency ?? 3 });
     this.timeoutMs = opts.timeoutMs ?? 120_000;
     this.retries = opts.retries ?? 2;
+    this.onError =
+      opts.onError ??
+      ((err, job) =>
+        console.error(`job ${job.kind} ${job.id} failed: ${(err as Error)?.message ?? err}`));
   }
 
   register(kind: string, handler: JobHandler): void {
@@ -96,6 +106,11 @@ export class JobRunner {
         throw err;
       }
     }) as Promise<void>;
+
+    // Fire-and-forget callers (RepoService.refresh/add) never await `done`.
+    // Without this handler a failed job is an unhandled rejection, and Node
+    // exits the whole API process. `done` still rejects for callers that await it.
+    done.catch((err) => this.onError(err, { id: jobId, kind }));
 
     return { id: jobId, done };
   }

@@ -26,25 +26,28 @@ flowchart LR
 The grounding step is the mandatory gate: a finding that doesn't cite a real line
 in the diff is dropped, so the engine can't hallucinate locations. The score is
 recomputed deterministically from the **surviving** findings, not trusted from the
-model. `review/run.ts` orchestrates the run (single-pass by default).
+model. `review/run.ts` orchestrates the run. The engine's own default strategy is
+`auto`; the studio server always passes `single-pass` unless an agent is set otherwise.
 
 The engine also accepts optional prompt slots the **later milestones** start
-feeding it — `skills` (M2), `memory` (M7), `specs` (M5), `callers` — plus a
-`reduce()`/map-reduce path and a `toReview()` CI payload helper used from M6.
-In the starter the server passes only the diff, system prompt, and repo map; the
-extra slots are omitted, so `assemblePrompt` simply leaves those sections out.
+feeding it — `skills` (M2), `memory` (M7), `specs` (M5) — plus a
+`reduceReviews()`/map-reduce path and a `toReviewPayload()` CI payload helper used from M6.
+In the starter the server passes the diff, system prompt, task line, PR description
+and, when repo-intel is on, the repo map and callers digest; the other slots are
+omitted, so `assemblePrompt` simply leaves those sections out.
+Deep dive: [`docs/review-engine.md`](docs/review-engine.md).
 
 ## Public API
 
 Exported from `src/index.ts`: `assemblePrompt` / `wrapUntrusted` (prompt),
 `groundFindings` / `groundingSummary` (grounding), `toJsonSchema` / `extractJson`
-/ `parseWithRepair` (structured output), plus the `run` entrypoint and
-`reduce`. Contracts (`Review`, `Finding`, `Verdict`, …) come from
+/ `parseWithRepair` (structured output), plus the `reviewPullRequest` entrypoint,
+`reduceReviews` / `sliceDiff`, `toReviewPayload` / `countBlockers`, and `OpenRouterProvider`. Contracts (`Review`, `Finding`, `Verdict`, …) come from
 `@devdigest/shared`.
 
 ## Testing
 
 `npm test` (vitest) — hermetic units with a stubbed `LLMProvider`: prompt
-assembly, the grounding gate, `toReview` selection, and a full `run`. No keys,
+assembly, the grounding gate, `toReviewPayload` selection, and a full `reviewPullRequest`. No keys,
 no network. `npm run typecheck` doubles as the build. See
 [`../TESTING.md`](../TESTING.md).
